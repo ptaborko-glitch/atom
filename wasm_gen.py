@@ -1,5 +1,5 @@
 # wasm_gen.py — Генератор WebAssembly (.wat) для Atom
-# Исправленная версия с экспортом глобальных переменных
+# Исправленная версия с корректной генерацией br_if
 
 class WasmGenerator:
     def __init__(self):
@@ -172,7 +172,6 @@ class WasmGenerator:
             else:
                 self.emit(f"(global ${name} (mut f64) (f64.const 0.0))")
 
-        # Экспортируем все глобальные переменные для доступа из JavaScript
         for name in self.global_names:
             self.emit(f'(export "{name}" (global ${name}))')
 
@@ -197,7 +196,13 @@ class WasmGenerator:
                 self.locals[name] = len(self.local_names)
                 self.local_types[name] = t
                 self.local_names.append(name)
+
         self.emit('(export "main" (func $main))')
+
+        for func_name, _ in functions:
+            if func_name.startswith('lexer_'):
+                self.emit(f'(export "{func_name}" (func ${func_name}))')
+
         self._generate_wasm_func("main", main_instructions)
 
         self.indent_level = 0
@@ -554,12 +559,17 @@ class WasmGenerator:
         elif opcode == "br_if":
             cond = ops[0]
             target = ops[1]
+            # Инвертируем условие: br_if срабатывает, когда условие ЛОЖНО
+            # Потому что в HIR br_if означает "если условие истинно, перейти"
+            # А в Wasm br_if переходит, если значение на стеке НЕ ноль
+            # Поэтому инвертируем: если условие истинно, делаем его 0, чтобы не переходить
             if self.get_var_type(cond) == "f64":
                 self._emit_var_access(cond)
                 self.emit("f64.const 0.0")
-                self.emit("f64.ne")
+                self.emit("f64.eq")  # 1 если cond == 0, 0 если cond != 0
             else:
                 self._emit_var_access(cond)
+                self.emit("i32.eqz")  # 1 если cond == 0, 0 если cond != 0
             self.emit(f"br_if ${target}")
 
         elif opcode == "return":

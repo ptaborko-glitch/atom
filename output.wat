@@ -523,6 +523,7 @@
                 f64.eq
                 local.set $%144
                 local.get $%144
+                i32.eqz
                 br_if $L1
                 call $lexer_advance
                 local.set $%145
@@ -544,6 +545,7 @@
                 f64.eq
                 local.set $%149
                 local.get $%149
+                i32.eqz
                 br_if $L3
                 call $lexer_advance
                 local.set $%150
@@ -594,6 +596,7 @@
                 f64.gt
                 local.set $%156
                 local.get $%156
+                i32.eqz
                 br_if $L5
                 global.get $ch
                 local.set $%157
@@ -665,6 +668,7 @@
                 f64.gt
                 local.set $%173
                 local.get $%173
+                i32.eqz
                 br_if $L7
                 call $lexer_advance
                 local.set $%174
@@ -1305,6 +1309,17 @@
         return
     )
     (export "main" (func $main))
+    (export "lexer_set_source" (func $lexer_set_source))
+    (export "lexer_current_char" (func $lexer_current_char))
+    (export "lexer_advance" (func $lexer_advance))
+    (export "lexer_peek" (func $lexer_peek))
+    (export "lexer_is_digit" (func $lexer_is_digit))
+    (export "lexer_is_alpha" (func $lexer_is_alpha))
+    (export "lexer_is_alnum" (func $lexer_is_alnum))
+    (export "lexer_skip_whitespace" (func $lexer_skip_whitespace))
+    (export "lexer_read_number" (func $lexer_read_number))
+    (export "lexer_read_ident" (func $lexer_read_ident))
+    (export "lexer_next_token" (func $lexer_next_token))
     (func $main (result f64)
         (local $%1 f64)
         (local $%3 f64)

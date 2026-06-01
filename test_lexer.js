@@ -1,56 +1,58 @@
-// test_lexer.js
+// test_lexer.js — Отладочная версия
 import fs from 'fs';
 
-// Сначала загружаем runtime.wasm
+// Загружаем runtime
 const runtimeWasm = fs.readFileSync('./runtime.wasm');
 const runtimeModule = await WebAssembly.compile(runtimeWasm);
 const runtimeInstance = await WebAssembly.instantiate(runtimeModule, {});
 
-// Получаем память runtime
 const memory = runtimeInstance.exports.memory;
 const view = new Uint8Array(memory.buffer);
 
-// Создаём строку "+ =" в памяти
-const strPtr = 65536;
+// Строка "+ ="
 const testString = "+ =";
+const strPtr = 65536;
 const len = testString.length;
 
-// Записываем строку в формате: длина (4 байта) + символы
+// Записываем строку в правильном формате
+// Формат строки: [4 байта длина] [байты символов]
 view[strPtr] = len & 0xFF;
 view[strPtr + 1] = (len >> 8) & 0xFF;
 view[strPtr + 2] = (len >> 16) & 0xFF;
 view[strPtr + 3] = (len >> 24) & 0xFF;
+
 for (let i = 0; i < len; i++) {
     view[strPtr + 4 + i] = testString.charCodeAt(i);
 }
 
-console.log('Строка создана по адресу:', strPtr);
-console.log('Содержимое:', testString);
+console.log('Строка:', testString);
+console.log('Длина:', len);
+console.log('Адрес:', strPtr);
+console.log('Байты длины:', view[strPtr], view[strPtr+1], view[strPtr+2], view[strPtr+3]);
+console.log('Символы:',
+    view[strPtr+4], '(+ должен быть 43)',
+    view[strPtr+5], '(пробел 32)',
+    view[strPtr+6], '(= 61)'
+);
 
-// Импорты для output.wasm
+// Импорты с отладкой
 const imports = {
     runtime: {
         string_char_code_at: (ptr, index) => {
             const len2 = view[ptr] | (view[ptr+1] << 8) | (view[ptr+2] << 16) | (view[ptr+3] << 24);
-            if (index < 0 || index >= len2) return -1;
-            return view[ptr + 4 + index];
+            const result = (index < 0 || index >= len2) ? -1 : view[ptr + 4 + index];
+            console.log(`  string_char_code_at(ptr=${ptr}, index=${index}) -> ${result} (len=${len2})`);
+            return result;
         },
         string_len: (ptr) => {
-            return view[ptr] | (view[ptr+1] << 8) | (view[ptr+2] << 16) | (view[ptr+3] << 24);
+            const result = view[ptr] | (view[ptr+1] << 8) | (view[ptr+2] << 16) | (view[ptr+3] << 24);
+            console.log(`  string_len(ptr=${ptr}) -> ${result}`);
+            return result;
         },
-        // Заглушки для других функций
-        string_create: () => 0,
-        string_concat: () => 0,
-        string_substring: () => 0,
-        string_set_char: () => {},
-        string_from_char: () => 0,
-        list_create: () => 0,
-        list_add: () => {},
-        list_get: () => 0,
-        list_len: () => 0,
+        // ... остальные заглушки
         tensor_create: () => 0,
-        tensor_get: () => 0,
         tensor_set: () => {},
+        tensor_get: () => 0,
         tensor_matmul: () => 0,
         tensor_add: () => 0,
         tensor_sub: () => 0,
@@ -78,7 +80,16 @@ const imports = {
         random: () => Math.random() * 2 - 1,
         exp: (x) => Math.exp(x),
         log: (x) => Math.log(x),
-        print_tensor: () => {}
+        print_tensor: () => {},
+        list_create: () => 0,
+        list_add: () => {},
+        list_get: () => 0,
+        list_len: () => 0,
+        string_create: () => 0,
+        string_concat: () => 0,
+        string_substring: () => 0,
+        string_set_char: () => {},
+        string_from_char: () => 0
     }
 };
 
@@ -88,34 +99,28 @@ const outputModule = await WebAssembly.compile(outputWasm);
 const outputInstance = await WebAssembly.instantiate(outputModule, imports);
 
 const exports = outputInstance.exports;
-console.log('Экспорты:', Object.keys(exports).slice(0, 20), '...');
 
 // Устанавливаем глобальные переменные
-if (exports.lexer_source) {
-    exports.lexer_source.value = strPtr;
-    console.log('lexer_source установлен на', strPtr);
-}
-if (exports.lexer_length) {
-    exports.lexer_length.value = len;
-    console.log('lexer_length установлен на', len);
-}
-if (exports.lexer_pos) {
-    exports.lexer_pos.value = 0;
-    console.log('lexer_pos установлен на 0');
-}
-if (exports.lexer_line) {
-    exports.lexer_line.value = 1;
-    console.log('lexer_line установлен на 1');
-}
-if (exports.lexer_col) {
-    exports.lexer_col.value = 1;
-    console.log('lexer_col установлен на 1');
-}
+console.log('\n=== Установка глобальных переменных ===');
+exports.lexer_source.value = strPtr;
+console.log('lexer_source =', exports.lexer_source.value);
 
-// Вызываем main (которая внутри вызывает lexer_next_token)
-console.log('\n=== Вызов main ===');
-const result = exports.main();
-console.log('Результат:', result);
+exports.lexer_length.value = len;
+console.log('lexer_length =', exports.lexer_length.value);
+
+exports.lexer_pos.value = 0;
+console.log('lexer_pos =', exports.lexer_pos.value);
+
+exports.lexer_line.value = 1;
+console.log('lexer_line =', exports.lexer_line.value);
+
+exports.lexer_col.value = 1;
+console.log('lexer_col =', exports.lexer_col.value);
+
+// Вызываем lexer_next_token
+console.log('\n=== Вызов lexer_next_token ===');
+const result = exports.lexer_next_token();
+console.log('\n=== Результат ===', result);
 
 // Интерпретируем результат
 const tokens = {
