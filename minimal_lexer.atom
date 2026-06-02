@@ -1,3 +1,4 @@
+// minimal_lexer.atom — Минимальный лексер для тестирования EOF
 TOKEN_EOF = -1.0
 TOKEN_NUMBER = 0.0
 TOKEN_IDENT = 1.0
@@ -70,18 +71,12 @@ func lexer_read_ident:
 
 func lexer_next_token:
     lexer_skip_whitespace()
-    
-    // Проверяем конец файла
-    if lexer_pos >= lexer_length:
-        return TOKEN_EOF
-    
     ch = lexer_current_char()
     
+    if ch == CHAR_EOF:
+        return TOKEN_EOF
     if ch == CHAR_NEWLINE:
         lexer_advance()
-        // После переноса строки проверяем конец файла
-        if lexer_pos >= lexer_length:
-            return TOKEN_NEWLINE
         return TOKEN_NEWLINE
     if ch == CHAR_PLUS:
         lexer_advance()

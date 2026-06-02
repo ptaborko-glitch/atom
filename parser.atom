@@ -1,0 +1,162 @@
+// parser.atom — Парсер языка Atom (self-hosting)
+// Использует скомпилированный лексер
+
+// ============================================================
+// КОНСТАНТЫ ТОКЕНОВ (должны совпадать с лексером)
+// ============================================================
+TOKEN_EOF = -1.0
+TOKEN_NUMBER = 0.0
+TOKEN_IDENT = 1.0
+TOKEN_PLUS = 2.0
+TOKEN_MINUS = 3.0
+TOKEN_STAR = 4.0
+TOKEN_SLASH = 5.0
+TOKEN_ASSIGN = 7.0
+TOKEN_EQ = 8.0
+TOKEN_LT = 10.0
+TOKEN_GT = 11.0
+TOKEN_COLON = 18.0
+TOKEN_NEWLINE = 22.0
+
+// ============================================================
+// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// ============================================================
+current_token = 0.0
+token_value = 0.0
+
+// ============================================================
+// БАЗОВЫЕ ФУНКЦИИ ПАРСЕРА
+// ============================================================
+
+func next_token:
+    current_token = lexer_next_token()
+    token_value = lexer_token_value
+    return current_token
+
+func eat(expected):
+    if current_token != expected:
+        // Ошибка: ожидался другой токен
+        return 0.0
+    return next_token()
+
+func peek(expected):
+    return current_token == expected
+
+// ============================================================
+// ПАРСИНГ ВЫРАЖЕНИЙ
+// ============================================================
+
+func parse_number:
+    value = token_value
+    eat(TOKEN_NUMBER)
+    return value
+
+func parse_identifier:
+    name = token_value
+    eat(TOKEN_IDENT)
+    return name
+
+func parse_primary:
+    if peek(TOKEN_NUMBER):
+        return parse_number()
+    if peek(TOKEN_IDENT):
+        return parse_identifier()
+    // TODO: скобки
+    return 0.0
+
+func parse_unary:
+    if peek(TOKEN_MINUS):
+        eat(TOKEN_MINUS)
+        operand = parse_unary()
+        return 0.0 - operand
+    return parse_primary()
+
+func parse_multiplication:
+    left = parse_unary()
+    while peek(TOKEN_STAR) or peek(TOKEN_SLASH):
+        op = current_token
+        eat(op)
+        right = parse_unary()
+        if op == TOKEN_STAR:
+            left = left * right
+        else:
+            left = left / right
+    return left
+
+func parse_addition:
+    left = parse_multiplication()
+    while peek(TOKEN_PLUS) or peek(TOKEN_MINUS):
+        op = current_token
+        eat(op)
+        right = parse_multiplication()
+        if op == TOKEN_PLUS:
+            left = left + right
+        else:
+            left = left - right
+    return left
+
+func parse_comparison:
+    left = parse_addition()
+    while peek(TOKEN_EQ) or peek(TOKEN_LT) or peek(TOKEN_GT):
+        op = current_token
+        eat(op)
+        right = parse_addition()
+        if op == TOKEN_EQ:
+            if left == right:
+                left = 1.0
+            else:
+                left = 0.0
+        elif op == TOKEN_LT:
+            if left < right:
+                left = 1.0
+            else:
+                left = 0.0
+        elif op == TOKEN_GT:
+            if left > right:
+                left = 1.0
+            else:
+                left = 0.0
+    return left
+
+func parse_expression:
+    return parse_comparison()
+
+// ============================================================
+// ПАРСИНГ ПРИСВАИВАНИЯ
+// ============================================================
+
+func parse_assignment:
+    name = token_value
+    eat(TOKEN_IDENT)
+    if peek(TOKEN_ASSIGN):
+        eat(TOKEN_ASSIGN)
+        value = parse_expression()
+        // Сохраняем результат
+        return value
+    return 0.0
+
+// ============================================================
+// ПАРСИНГ ПРОГРАММЫ
+// ============================================================
+
+func parse_program:
+    next_token()
+    while not peek(TOKEN_EOF):
+        // Пропускаем пустые строки
+        while peek(TOKEN_NEWLINE):
+            eat(TOKEN_NEWLINE)
+        if peek(TOKEN_EOF):
+            break
+        result = parse_assignment()
+        // После выражения ожидаем NEWLINE или EOF
+        if not peek(TOKEN_EOF) and not peek(TOKEN_NEWLINE):
+            // Ошибка
+            return 0.0
+    return 1.0
+
+// ============================================================
+// ГЛАВНАЯ ФУНКЦИЯ
+// ============================================================
+
+func parse:
+    return parse_program()
