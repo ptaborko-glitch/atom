@@ -452,6 +452,9 @@ class Parser:
     def parse_return(self):
         self.eat(TokenType.KW_RETURN)
         value = self.parse_expression()
+        # После return может быть NEWLINE (который мы пропускаем)
+        if self.peek(TokenType.NEWLINE):
+            self.eat(TokenType.NEWLINE)
         return ReturnStmt(value)
 
     def parse_if(self):
@@ -465,7 +468,9 @@ class Parser:
             if self.peek(TokenType.NEWLINE):
                 self.eat(TokenType.NEWLINE)
                 continue
-            then_body.append(self.parse_statement())
+            stmt = self.parse_statement()
+            then_body.append(stmt)
+            # После return не нужно NEWLINE, продолжаем
         self.eat(TokenType.DEDENT)
         else_body = []
         if self.peek(TokenType.KW_ELSE):
