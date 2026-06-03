@@ -1,4 +1,4 @@
-// lexer_simple.atom — Упрощённый лексер без логических операторов
+// lexer_correct.atom — Правильный синтаксис функций
 
 TOKEN_EOF = -1.0
 TOKEN_NUMBER = 0.0
@@ -54,16 +54,14 @@ func lexer_advance():
 
 func lexer_is_digit():
     ch = lexer_current_char()
-    if ch >= CHAR_ZERO:
-        if ch <= CHAR_NINE:
-            return 1.0
+    if ch >= CHAR_ZERO and ch <= CHAR_NINE:
+        return 1.0
     return 0.0
 
 func lexer_is_alpha():
     ch = lexer_current_char()
-    if ch >= CHAR_A_LOWER:
-        if ch <= CHAR_Z_LOWER:
-            return 1.0
+    if ch >= CHAR_A_LOWER and ch <= CHAR_Z_LOWER:
+        return 1.0
     return 0.0
 
 func lexer_skip_whitespace():
@@ -112,6 +110,10 @@ func lexer_next_token():
         return TOKEN_SLASH
     if ch == CHAR_ASSIGN:
         lexer_advance()
+        next_ch = lexer_current_char()
+        if next_ch == CHAR_ASSIGN:
+            lexer_advance()
+            return TOKEN_EQ
         return TOKEN_ASSIGN
     if ch == CHAR_LT:
         lexer_advance()

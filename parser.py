@@ -168,11 +168,12 @@ class ReturnStmt(ASTNode):
 
 
 class FuncDef(ASTNode):
-    def __init__(self, name, body):
+    def __init__(self, name, params, body):
         self.name = name
+        self.params = params if params else []
         self.body = body
     def __repr__(self):
-        return f"FuncDef({self.name})"
+        return f"FuncDef({self.name}, params={self.params})"
 
 
 class FuncCall(ASTNode):
@@ -279,9 +280,20 @@ class Parser:
             self.error(f"Unexpected token: {self.current_token}")
 
     def parse_func_def(self):
-        """FuncDef := 'func' IDENT ':' NEWLINE INDENT Statement+ DEDENT"""
+        """FuncDef := 'func' IDENT '(' ParamList? ')' ':' NEWLINE INDENT Statement+ DEDENT"""
         self.eat(TokenType.KW_FUNC)
         name = self.eat(TokenType.IDENT).value
+        
+        # Парсим параметры в скобках
+        self.eat(TokenType.LPAREN)
+        params = []
+        if not self.peek(TokenType.RPAREN):
+            params.append(self.eat(TokenType.IDENT).value)
+            while self.peek(TokenType.COMMA):
+                self.eat(TokenType.COMMA)
+                params.append(self.eat(TokenType.IDENT).value)
+        self.eat(TokenType.RPAREN)
+        
         self.eat(TokenType.COLON)
         self.eat(TokenType.NEWLINE)
         self.eat(TokenType.INDENT)
@@ -292,7 +304,7 @@ class Parser:
                 continue
             body.append(self.parse_statement())
         self.eat(TokenType.DEDENT)
-        return FuncDef(name, body)
+        return FuncDef(name, params, body)
 
     def parse_ident_statement(self):
         name = self.eat(TokenType.IDENT).value

@@ -1,0 +1,7 @@
+(module
+  (func $main (result f64)
+    f64.const 0
+    return
+  )
+  (export "main" (func $main))
+)
