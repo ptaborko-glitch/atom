@@ -1,0 +1,10 @@
+(module
+  (func $main (result f64)
+    ;; var0 = f64.const 42
+    f64.const 42
+    (local.set $var0)
+    f64.const 42
+    return
+  )
+  (export "main" (func $main))
+)
